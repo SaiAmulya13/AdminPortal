@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup</title>
+</head>
+<body>
+    <h2>Signup</h2>
+
+    <form id="signupForm">
+        <input type="text" id="name" placeholder="Full Name" required><br><br>
+        <input type="email" id="email" placeholder="Email" required><br><br>
+        <input type="password" id="password" placeholder="Password" required><br><br>
+        <input type="password" id="confirm" placeholder="Confirm Password" required><br><br>
+        <button type="submit">Signup</button>
+    </form>
+
+    <p id="msg"></p>
+
+    <a href="/">Back to Login</a>
+
+    <script>
+        document.getElementById("signupForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById("password").value;
+            const confirm = document.getElementById("confirm").value;
+
+            if (password !== confirm) {
+                document.getElementById("msg").innerText = "Passwords do not match";
+                return;
+            }
+
+            const res = await fetch("/signup", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    full_name: document.getElementById("name").value,
+                    email: document.getElementById("email").value,
+                    password: password
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert("Signup successful");
+                window.location.href = "/";
+            } else {
+                document.getElementById("msg").innerText = data.error;
+            }
+        });
+    </script>
+</body>
+</html>
