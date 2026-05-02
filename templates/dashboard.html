@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: url("{{ url_for('static', filename='images/img.png') }}") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .overlay {
+            background: rgba(0,0,0,0.6);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+        }
+
+        form, .card, .section {
+            background: white;
+            color: black;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+        }
+
+        button {
+            padding: 8px;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .add { background: green; color: white; }
+        .edit { background: orange; color: white; }
+        .delete { background: red; color: white; }
+        .view { background: blue; color: white; }
+    </style>
+</head>
+
+<body>
+<div class="overlay">
+<div class="container">
+
+<h2>Dashboard</h2>
+
+<!-- ================= OPPORTUNITY FORM ================= -->
+<form id="oppForm">
+    <h3 id="formTitle">Add Opportunity</h3>
+
+    <input type="hidden" id="opp_id">
+
+    <input type="text" id="name" placeholder="Name" required>
+    <input type="text" id="duration" placeholder="Duration" required>
+    <input type="date" id="start_date" required>
+
+    <textarea id="description" placeholder="Description" required></textarea>
+
+    <input type="text" id="skills" placeholder="Skills" required>
+
+    <select id="category" required>
+        <option value="">Select</option>
+        <option>Technology</option>
+        <option>Business</option>
+        <option>Design</option>
+        <option>Marketing</option>
+        <option>Data Science</option>
+        <option>Other</option>
+    </select>
+
+    <input type="text" id="future" placeholder="Future Opportunities" required>
+    <input type="number" id="max_applicants" placeholder="Max Applicants">
+
+    <button type="submit" class="add">Save</button>
+</form>
+
+<!-- ================= OPPORTUNITY LIST ================= -->
+<div id="list"></div>
+
+<!-- ================= FORGOT PASSWORD ================= -->
+<div class="section">
+    <h3>Forgot Password</h3>
+
+    <input type="email" id="fp_email" placeholder="Enter email">
+    <button onclick="forgotPassword()">Send Reset Link</button>
+
+    <p id="fp_msg"></p>
+</div>
+
+<!-- ================= RESET PASSWORD ================= -->
+<div class="section">
+    <h3>Reset Password</h3>
+
+    <input type="text" id="token" placeholder="Paste token here">
+    <input type="password" id="new_password" placeholder="New Password">
+
+    <button onclick="resetPassword()">Reset Password</button>
+
+    <p id="reset_msg"></p>
+</div>
+
+</div>
+</div>
+
+<script>
+const admin_id = localStorage.getItem("admin_id");
+
+// ================= LOAD =================
+async function loadData() {
+    const res = await fetch(`/opportunities/${admin_id}`);
+    const data = await res.json();
+
+    let html = "";
+
+    if (!data || data.length === 0) {
+        html = "<p>No opportunities found</p>";
+    }
+
+    data.forEach(o => {
+        html += `
+        <div class="card">
+            <h3>${o.name}</h3>
+
+            <p><b>Category:</b> ${o.category}</p>
+            <p><b>Duration:</b> ${o.duration}</p>
+            <p><b>Start Date:</b> ${o.start_date}</p>
+            <p><b>Description:</b> ${o.description}</p>
+            <p><b>Skills:</b> ${o.skills}</p>
+            <p><b>Future:</b> ${o.future_opportunities}</p>
+            <p><b>Max Applicants:</b> ${o.max_applicants || "N/A"}</p>
+
+            <button class="edit" onclick='editOpp(${JSON.stringify(o)})'>Edit</button>
+            <button class="delete" onclick="deleteOpp(${o.id})">Delete</button>
+        </div>`;
+    });
+
+    document.getElementById("list").innerHTML = html;
+}
+
+// ================= ADD / UPDATE =================
+document.getElementById("oppForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById("opp_id").value;
+
+    const payload = {
+        name: name.value,
+        duration: duration.value,
+        start_date: start_date.value,
+        description: description.value,
+        skills: skills.value,
+        category: category.value,
+        future_opportunities: future.value,
+        max_applicants: max_applicants.value,
+        admin_id: admin_id
+    };
+
+    let res;
+
+    if (id) {
+        res = await fetch(`/opportunity/${id}`, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+    } else {
+        res = await fetch("/opportunity", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload)
+        });
+    }
+
+    if (res.ok) {
+        alert(id ? "Updated!" : "Added!");
+        resetForm();
+        loadData();
+    }
+});
+
+// ================= EDIT =================
+function editOpp(o) {
+    formTitle.innerText = "Edit Opportunity";
+
+    opp_id.value = o.id;
+    name.value = o.name;
+    duration.value = o.duration;
+    start_date.value = o.start_date;
+    description.value = o.description;
+    skills.value = o.skills;
+    category.value = o.category;
+    future.value = o.future_opportunities;
+    max_applicants.value = o.max_applicants || "";
+}
+
+// ================= DELETE =================
+async function deleteOpp(id) {
+    if (!confirm("Delete this?")) return;
+
+    await fetch(`/opportunity/${id}`, { method: "DELETE" });
+    loadData();
+}
+
+// ================= FORGOT PASSWORD =================
+async function forgotPassword() {
+    const email = document.getElementById("fp_email").value;
+
+    await fetch("/forgot-password", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email: email })
+    });
+
+    document.getElementById("fp_msg").innerText =
+        "Check terminal for reset link";
+}
+
+// ================= RESET PASSWORD =================
+async function resetPassword() {
+    const token = document.getElementById("token").value;
+    const password = document.getElementById("new_password").value;
+
+    const res = await fetch(`/reset/${token}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ password: password })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("reset_msg").innerText =
+        data.message || data.error;
+}
+
+// ================= RESET FORM =================
+function resetForm() {
+    oppForm.reset();
+    opp_id.value = "";
+    formTitle.innerText = "Add Opportunity";
+}
+
+// ================= AUTO LOAD =================
+window.onload = loadData;
+</script>
+
+</body>
+</html>
